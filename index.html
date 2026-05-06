@@ -103,11 +103,29 @@
 <script>
 const COLORS = ["#4F86C6","#E8834E","#5BAD72","#9B6BB5","#E06B6B","#4DBDBD","#E8C14E","#B55B8B"];
 const KEYWORDS = ["assignment","project","quiz","test","exam","mst","mid"];
-const PROXY = "https://corsproxy.io/?";
+const PROXIES = [
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  url => `https://thingproxy.freeboard.io/fetch/${url}`,
+];
 
 function goBack() {
   document.getElementById('dashboard').style.display = 'none';
   document.getElementById('landing').style.display = 'flex';
+}
+
+async function fetchWithFallback(url) {
+  for (const proxy of PROXIES) {
+    try {
+      const res = await fetch(proxy(url), { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) continue;
+      const text = await res.text();
+      if (text.includes('BEGIN:VCALENDAR')) return text;
+    } catch (e) {
+      console.warn('Proxy failed, trying next...', e);
+    }
+  }
+  throw new Error('All proxies failed');
 }
 
 async function loadCalendar() {
@@ -121,9 +139,7 @@ async function loadCalendar() {
   btn.textContent = '加载中...';
 
   try {
-    const res = await fetch(PROXY + encodeURIComponent(url));
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const text = await res.text();
+    const text = await fetchWithFallback(url);
     const events = parseIcal(text);
     showDashboard(events);
   } catch (e) {
