@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UniDeadline</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ical.js/1.5.0/ical.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'DM Sans', sans-serif; background: #0f0f11; color: #f0ede8; min-height: 100vh; }
+
+  /* LANDING */
+  #landing { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 40px 24px; }
+  .hero { text-align: center; max-width: 560px; width: 100%; }
+  .badge { display: inline-block; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); border-radius: 20px; padding: 6px 14px; font-size: 12px; color: #aaa; letter-spacing: 0.5px; margin-bottom: 32px; }
+  h1 { font-size: clamp(36px, 8vw, 56px); font-weight: 600; line-height: 1.1; margin-bottom: 16px; letter-spacing: -1px; }
+  h1 span { color: #7C9FF5; }
+  .subtitle { color: #888; font-size: 16px; line-height: 1.6; margin-bottom: 40px; }
+  .input-group { display: flex; gap: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 8px; margin-bottom: 16px; transition: border-color 0.2s; }
+  .input-group:focus-within { border-color: rgba(124,159,245,0.5); }
+  #ical-input { flex: 1; background: none; border: none; outline: none; color: #f0ede8; font-size: 13px; font-family: 'DM Mono', monospace; padding: 8px 12px; }
+  #ical-input::placeholder { color: #555; }
+  #go-btn { background: #7C9FF5; color: #0f0f11; border: none; border-radius: 10px; padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; font-family: 'DM Sans', sans-serif; transition: background 0.2s; }
+  #go-btn:hover { background: #96b3f7; }
+  #go-btn:disabled { background: #444; color: #888; cursor: not-allowed; }
+  .hint { font-size: 12px; color: #555; line-height: 1.6; }
+  .steps { display: flex; gap: 12px; margin-top: 48px; text-align: left; }
+  .step { flex: 1; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 16px; }
+  .step-num { font-size: 11px; color: #7C9FF5; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .step p { font-size: 13px; color: #777; margin: 0; line-height: 1.5; }
+  .error-msg { background: rgba(220,80,80,0.1); border: 1px solid rgba(220,80,80,0.3); border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #f08080; margin-bottom: 16px; text-align: left; display: none; }
+
+  /* DASHBOARD */
+  #dashboard { display: none; background: #f5f5f7; min-height: 100vh; color: #1d1d1f; }
+  header { background: #0f0f11; color: white; padding: 16px 40px; display: flex; justify-content: space-between; align-items: center; }
+  header h2 { font-size: 18px; font-weight: 600; color: white; }
+  .back-btn { font-size: 13px; color: #888; background: none; border: 1px solid #333; border-radius: 8px; padding: 6px 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: color 0.2s; }
+  .back-btn:hover { color: #fff; }
+  .dash-container { max-width: 760px; margin: 32px auto; padding: 0 20px; }
+  .summary { background: #0f0f11; color: white; border-radius: 16px; padding: 24px 28px; margin-bottom: 28px; display: flex; gap: 32px; }
+  .stat-num { font-size: 32px; font-weight: 600; line-height: 1; margin-bottom: 4px; }
+  .stat-label { font-size: 12px; color: #666; }
+  .stat-num.red { color: #f07070; }
+  .stat-num.yellow { color: #f0c060; }
+  .stat-num.green { color: #70c070; }
+  .section-title { font-size: 11px; font-weight: 600; color: #aaa; text-transform: uppercase; letter-spacing: 1px; margin: 24px 0 10px; }
+  .card { background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 8px; display: flex; align-items: center; gap: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .card-body { flex: 1; min-width: 0; }
+  .card-title { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-meta { font-size: 12px; color: #999; margin-top: 3px; }
+  .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+  .urgent { background: #fdecea; color: #c0392b; }
+  .soon { background: #fef9ec; color: #b7770d; }
+  .ok { background: #eafaf1; color: #1e8449; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #666; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .loading { text-align: center; padding: 60px 0; color: #aaa; }
+  .spinner { display: inline-block; width: 24px; height: 24px; border: 3px solid #333; border-top-color: #7C9FF5; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- LANDING PAGE -->
+<div id="landing">
+  <div class="hero">
+    <div class="badge">为墨大学生打造</div>
+    <h1>别再错过<br><span>Deadline</span> 了</h1>
+    <p class="subtitle">粘贴你的 Canvas 日历链接，<br>立刻看到所有作业和考试倒计时。</p>
+    <div class="error-msg" id="error-msg">链接无效或无法访问，请确认链接以 .ics 结尾且完整复制。</div>
+    <div class="input-group">
+      <input id="ical-input" type="text" placeholder="https://canvas.lms.unimelb.edu.au/feeds/calendars/..." />
+      <button id="go-btn" onclick="loadCalendar()">查看 →</button>
+    </div>
+    <p class="hint">怎么找到这个链接？Canvas → Calendar → 右下角 Calendar Feed</p>
+    <div class="steps">
+      <div class="step"><div class="step-num">第一步</div><p>登录 Canvas，点击左侧 Calendar</p></div>
+      <div class="step"><div class="step-num">第二步</div><p>右下角找到 Calendar Feed，复制链接</p></div>
+      <div class="step"><div class="step-num">第三步</div><p>粘贴到上方输入框，点击查看</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD PAGE -->
+<div id="dashboard">
+  <header>
+    <h2>📚 UniDeadline</h2>
+    <button class="back-btn" onclick="goBack()">← 换一个账号</button>
+  </header>
+  <div class="dash-container">
+    <div id="dash-content">
+      <div class="loading">
+        <div class="spinner"></div>
+        <div>正在加载你的 deadline...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const COLORS = ["#4F86C6","#E8834E","#5BAD72","#9B6BB5","#E06B6B","#4DBDBD","#E8C14E","#B55B8B"];
+const KEYWORDS = ["assignment","project","quiz","test","exam","mst","mid"];
+const PROXY = "https://corsproxy.io/?";
+
+function goBack() {
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('landing').style.display = 'flex';
+}
+
+async function loadCalendar() {
+  const url = document.getElementById('ical-input').value.trim();
+  const errEl = document.getElementById('error-msg');
+  const btn = document.getElementById('go-btn');
+
+  if (!url) return;
+  errEl.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = '加载中...';
+
+  try {
+    const res = await fetch(PROXY + encodeURIComponent(url));
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const events = parseIcal(text);
+    showDashboard(events);
+  } catch (e) {
+    errEl.style.display = 'block';
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '查看 →';
+  }
+}
+
+function parseIcal(text) {
+  const jcal = ICAL.parse(text);
+  const comp = new ICAL.Component(jcal);
+  const vevents = comp.getAllSubcomponents('vevent');
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  const colorMap = {};
+  let colorIdx = 0;
+  const events = [];
+
+  vevents.forEach(vevent => {
+    const title = vevent.getFirstPropertyValue('summary') || '';
+    if (!KEYWORDS.some(k => title.toLowerCase().includes(k))) return;
+
+    const dtstart = vevent.getFirstProperty('dtstart');
+    if (!dtstart) return;
+    const val = dtstart.getFirstValue();
+    const dueDate = val.toJSDate ? val.toJSDate() : new Date(val);
+    dueDate.setHours(0,0,0,0);
+    if (dueDate < today) return;
+
+    const match = title.match(/\[([A-Z]+\d+)_/);
+    const course = match ? match[1] : 'OTHER';
+    if (!colorMap[course]) {
+      colorMap[course] = COLORS[colorIdx % COLORS.length];
+      colorIdx++;
+    }
+
+    const daysLeft = Math.round((dueDate - today) / 86400000);
+    const cleanTitle = title.replace(/\s*\[.*?\]/g, '').trim();
+    const dueStr = dueDate.toISOString().slice(0,10);
+
+    events.push({ title: cleanTitle, due: dueStr, days_left: daysLeft, course, color: colorMap[course] });
+  });
+
+  events.sort((a,b) => a.due.localeCompare(b.due));
+  return events;
+}
+
+function showDashboard(data) {
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+
+  const urgent = data.filter(d => d.days_left <= 3);
+  const soon = data.filter(d => d.days_left > 3 && d.days_left <= 10);
+  const later = data.filter(d => d.days_left > 10);
+
+  const courses = [...new Set(data.map(d => d.course))];
+  const legendHTML = courses.map(c => {
+    const color = data.find(d => d.course === c)?.color || '#888';
+    return `<div class="legend-item"><div class="legend-dot" style="background:${color}"></div>${c}</div>`;
+  }).join('');
+
+  function sectionHTML(title, items) {
+    if (!items.length) return '';
+    const cards = items.map(e => {
+      const bc = e.days_left <= 3 ? 'urgent' : e.days_left <= 7 ? 'soon' : 'ok';
+      const bt = e.days_left === 0 ? '今天！' : e.days_left === 1 ? '明天' : `${e.days_left} 天`;
+      return `<div class="card">
+        <div class="dot" style="background:${e.color}"></div>
+        <div class="card-body">
+          <div class="card-title">${e.title}</div>
+          <div class="card-meta">${e.course} · 截止 ${e.due}</div>
+        </div>
+        <span class="badge ${bc}">${bt}</span>
+      </div>`;
+    }).join('');
+    return `<div class="section-title">${title}</div>${cards}`;
+  }
+
+  document.getElementById('dash-content').innerHTML = `
+    <div class="summary">
+      <div class="stat"><div class="stat-num red">${urgent.length}</div><div class="stat-label">紧急（3天内）</div></div>
+      <div class="stat"><div class="stat-num yellow">${soon.length}</div><div class="stat-label">即将到来（10天内）</div></div>
+      <div class="stat"><div class="stat-num green">${later.length}</div><div class="stat-label">之后</div></div>
+    </div>
+    <div class="legend">${legendHTML}</div>
+    ${sectionHTML('🔴 紧急（3天内）', urgent)}
+    ${sectionHTML('🟡 即将到来（10天内）', soon)}
+    ${sectionHTML('🟢 之后', later)}
+    ${data.length === 0 ? '<p style="text-align:center;padding:60px 0;color:#aaa">🎉 暂无即将到来的 deadline！</p>' : ''}
+  `;
+}
+
+document.getElementById('ical-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') loadCalendar();
+});
+</script>
+</body>
+</html>
